@@ -1,0 +1,532 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+
+---
+title: "The Sparks Foundation: Graduate Rotational Internship Program"
+author: "Raphael Frimpong Marfo"
+date:   '19 March, 2022'
+output: html_document
+---
+
+## Exploratory Data Analysis on Super Store
+
+### Introduction 
+
+The Super Store is a small retail business. They sell Furniture, Office Supplies and Technology products and their customers are the mass Consumer, Corporate and Home Offices. The data set contains sales, profit and geographical information of individual orders
+
+The task is to determine weak areas and opportunities for Super Store to boost business growth.
+
+**The analysis will answer these questions:**
+
+1. What are the strongest to weakest categories in terms of revenue and profit
+2. What are the strongest to weakest sub-categories
+3. Are discounts given in each category and sub-categories worth it
+4. Which region is the most profitable
+
+There are several factors that can affect the profitability of a good but the one provided in the data is **discounts**. There will be a major focus on how discounts affects profitability.  
+
+
+### Preparing The Environment
+
+Setting up my R environment by loading the required R packages and Super Store dataset to aid with the analysis
+ 
+```{r loading packages, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library('tidyverse')
+library('tidyr')
+library('dplyr')
+library("here")
+library("skimr")
+library("janitor")
+library("ggplot2")
+library("patchwork")
+```
+
+```{r loading Sample Superstore data set, message=FALSE, warning=FALSE, paged.print=FALSE}
+SampleSuperstore <- read_csv("SampleSuperstore.csv")
+```
+
+
+## Data Exploration
+
+**Let's have a preview at the data set**
+
+```{r using head() and tail() functions to have a sneak preview of the dataset}
+ head(SampleSuperstore)
+ tail(SampleSuperstore)
+```
+
+
+## Data Cleaning
+
+**Cleaning data set off any "dirt"(duplicate values, null values). Uncleaned data sets can produce biased analysis **
+
+```{r checking for and removing duplicate and null values}
+is.null(SampleSuperstore)
+SampleSuperstore<-unique(SampleSuperstore)
+```
+
+
+## Data Manipulation
+
+**Filtering out data for each category for further analysis**
+
+```{r data manipulation for analysis}
+ SampleSuperstore_furniture <- filter(SampleSuperstore, Category == 'Furniture') 
+ SampleSuperstore_OfficeSupllies <- filter(SampleSuperstore, Category == 'Office Supplies')
+ SampleSuperstore_Technology <- filter(SampleSuperstore, Category == 'Technology')
+```
+
+**Renaming SampleSuperstore to df for analysis**
+
+```{r renaming Sample Super Store to df, message=FALSE, warning=FALSE, paged.print=FALSE}
+df <- SampleSuperstore
+```
+
+
+## Descriptive Summary
+
+**Descriptive summary is to have an initial statistical preview about the data set**
+
+```{r initial statistical preview of Sample Superstore and each category}
+summary(SampleSuperstore)
+summary(SampleSuperstore_furniture)
+summary(SampleSuperstore_OfficeSupllies)
+summary(SampleSuperstore_Technology)
+```
+
+The main purpose of the descriptive summary is to throw an early analytical light on the data set. It gives an initial hint about the weakest areas in sample Superstore and the rest of the analysis are built on this foundation.
+
+1. Technology has the highest average profit despite having the lowest quantity bought per transaction and the lowest average discount.
+
+2. Office supplies has the highest quantity bought per transaction, second in discounts and lowest in sales revenue per transaction.
+
+3. Furniture has the highest discounts, lowest average profit, second in quanity and second in average sales revenue.
+
+The descriptive summary makes it obvious that Furniture and Office Supplies are the least profitable categories and therefore the potential weak links.
+
+
+## Exploratory Data Analysis
+
+
+```{r Total and Average values for each category}
+df_grp_category = df %>% group_by(Category) %>% 
+  summarise(total_sales = sum(Sales), total_profit = sum(Profit),
+    total_quantity = sum(Quantity), total_discount = sum(Discount),
+    average_sales = mean(Sales), average_profit = mean(Profit),
+    average_quantity = mean(Quantity), average_discount = mean(Discount)*100,
+    .groups = "drop")
+ view(df_grp_category)
+```
+
+**Number of transactions per each category**
+
+```{r Number of transaction per each category}
+# counting the number of transactions per each category
+df_grp_category_count = df %>% group_by(Category) %>% count()
+view(df_grp_category_count)
+
+#creating a new column with the column name of No_of_transactions
+df_grp_category_count = mutate(df_grp_category_count, No_of_transactions = n)
+
+#dropping column n from the df_grp_category_count table
+df_grp_category_count = select(df_grp_category_count, -n)
+view(df_grp_category_count)
+```
+
+
+### Bar charts to compare the Sales, Profit and Discount of all SampleSuperStore categories
+
+```{r Bar Charts for Categories, include=FALSE}
+transactions <- ggplot(df_grp_category_count, aes(x=Category, y=No_of_transactions, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Number of Transactions per Category", subtitle = "Note: One transaction from a client could result multiple quantities purchased") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+discount_average <- ggplot(df_grp_category, aes(x=Category, y=average_discount, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Average Discount per Category", subtitle = "Average amount of discount given to clients for one transaction") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+discount_total <- ggplot(df_grp_category, aes(x=Category, y=total_discount, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Total Discount per Category", subtitle = "Total amount of discount given to clients for one transaction") +   theme_classic() + theme(axis.text.x = element_blank())
+
+sales_average <- ggplot(df_grp_category, aes(x=Category, y=average_sales, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Average Sales per Category", subtitle = "Average amount of sales revenue generated for one transaction") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+sales_total <- ggplot(df_grp_category, aes(x=Category, y=total_sales, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Total Sales per Category", subtitle = "Total amount of sales revenue generated from each category") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+profit_average <- ggplot(df_grp_category, aes(x=Category, y=average_profit, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Average Profit per Category", subtitle = "Average amount of profit generated for one transaction") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+profit_total <- ggplot(df_grp_category, aes(x=Category, y=total_profit, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Total Profit per Category", subtitle = "Total amount of profit generated from each category") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+quantity_average <- ggplot(df_grp_category, aes(x=Category, y=average_quantity, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Average Quantity per Category", subtitle = "Average quantity of a product purchased per transaction") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+
+quantity_total <- ggplot(df_grp_category, aes(x=Category, y=total_quantity, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_brewer(palette="Dark2") +
+  labs(title = "Total Quantity per Category", subtitle = "Total quantity of a product purchased per transaction") + 
+  theme_classic() + theme(axis.text.x = element_blank())
+```
+
+**Comparing number of transactions with quantity purchased per category**
+
+```{r, fig.width=18}
+transactions + quantity_average + quantity_total
+```
+
+There are several factors that could affect how much a good is bought. In the SampleSuperstore data, discount is potentially a major factor.  When companies offers discounts it decreases the average sales revenue and average profits, therefore, discounts are given to substantially increase the number of transactions and items purchased in order to cover for the drop in price of the good due to the discount.
+
+1. The charts above show that despite not having the highest discount rate, office supply substantially has more transactions and quantities purchased than the other categories.
+
+2. Furniture despite having the highest discount rate is significantly behind Office supplies.
+
+3. Technology has the lowest transactions but not significantly lower than furniture despite having the lowest discount rates.
+
+Furniture not pulling a lot of transactions despite the high discount rates shines light on it as potentially the weakest area. 
+The 'type of good', 'price' and the consumers 'marginal utility' could be potentially causes why Furniture  does not generate a lot of transactions.
+
+
+**comparing discounts offered per category**
+```{r, fig.width=12}
+discount_average +discount_total
+```
+
+Per transaction, furniture had the highest discount rate however Office Supplies has the highest in total. This might be because discounts given generated a lot more discounted transactions.  
+
+**comparing sales revenue per category**
+```{r,fig.width=12}
+sales_average + sales_total
+```
+
+Office Supplies has lowest sales revenue generated despite having the highest number of transactions. This is probably due to the low prices of office supplies goods and to an extent discounts. Discount is a not a major factor because Furniture had more discounts on average but still has significantly higher revenue generated.
+
+
+1. Technology is the most profitable category and furniture is significantly the least profitable.
+
+In general, it is expected that the most discounted categories have the least profit per transactions. However, this disadvantaged can be curbed by substantial increase in demand for the product. Office Supplies satisfy this requirement more than Furniture.
+
+**comparing profit per category**
+```{r, fig.width=12}
+profit_average + profit_total
+```
+
+
+
+### Scatter plots to determine the relationship between Profit, Sales Revenue and Discount from Office Supplies sales
+
+**Scatter plots are being used to know the exact level of discounts rate was more beneficial. It could potentially provide a guide on what good to apply discounts on and by how much.**
+
+```{r include=FALSE}
+## scatterplots to determine the relationship between Profit, Sales Revenue and Discount from Office Supplies sales
+furniture_profit <- ggplot(data=SampleSuperstore_furniture) + geom_point(mapping=aes(x = Discount, y = Profit, size = Profit, color = Profit )) +
+  theme_classic() + labs(title= "Furniture: Profit vs Discount", subtitle = "How discount affect profit") +
+  annotate("text", x=0.6, y=5000, label = "Pearson cor(r) -0.4839103")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_furniture$Profit, SampleSuperstore_furniture$Discount)
+
+furniture_sales <- ggplot(data=SampleSuperstore_furniture) + geom_point(mapping=aes(x = Discount, y = Sales, size = Sales, color = Sales )) +
+  theme_classic() + labs(title= "Furniture Sales: Sales vs Discount", subtitle = "How discount affect sales") +
+  annotate("text", x=0.6, y=10000, label = "Pearson cor(r) -0.02880825")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_furniture$Sales, SampleSuperstore_furniture$Discount)
+
+furniture_quantity <- ggplot(data=SampleSuperstore_furniture) + geom_point(mapping=aes(x = Discount, y = Quantity, size = Quantity, color = Quantity )) +
+  theme_classic() + labs(title= "Furniture Sales: Quantity vs Discount", subtitle = "How discount affect quatity sold") +
+  annotate("text", x=0.4, y=14, label = "Pearson cor(r) -0.01576256")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_furniture$Quantity, SampleSuperstore_furniture$Discount)
+
+
+OfficeSupplies_profit <- ggplot(data=SampleSuperstore_OfficeSupllies) + geom_point(mapping=aes(x = Discount, y = Profit, size = Profit, color = Profit )) +
+  theme_classic() + labs(title= "Office Sales: Profit vs Discount", subtitle = "How discount affect profit") +
+  annotate("text", x=0.6, y=5000, label = "Pearson cor(r)-0.2087872")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_OfficeSupllies$Profit, SampleSuperstore_OfficeSupllies$Discount)
+
+OfficeSupplies_sales <- ggplot(data=SampleSuperstore_OfficeSupllies) + geom_point(mapping=aes(x = Discount, y = Sales, size = Sales, color = Sales )) +
+  theme_classic() + labs(title= "Office Supplies Sales: Sales vs Discount", subtitle = "How discount affect sales") +
+  annotate("text", x=0.6, y=10000, label = "Pearson cor(r)-0.06943072")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_OfficeSupllies$Sales, SampleSuperstore_OfficeSupllies$Discount)
+
+OfficeSupplies_quantity <- furniture_quanity <- ggplot(data=SampleSuperstore_OfficeSupllies) + geom_point(mapping=aes(x = Discount, y = Quantity, size = Quantity, color = Quantity )) +
+  theme_classic() + labs(title= "Office Supplies Sales: Quantity vs Discount", subtitle = "How discount affect quatity sold") +
+  annotate("text", x=0.4, y=14, label = "Pearson cor(r)0.01956852")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_OfficeSupllies$Quantity, SampleSuperstore_OfficeSupllies$Discount)
+
+## scatterplots to determine the relationship between Profit, Sales Revenue and Discount from Technology sales
+Technology_profit <- ggplot(data=SampleSuperstore_Technology) + geom_point(mapping=aes(x = Discount, y = Profit, size = Profit, color = Profit )) +
+  theme_classic() + labs(title= "Technology Sales: Profit vs Discount", subtitle = "How discount affect profit") +
+  annotate("text", x=0.6, y=8000, label = "Pearson cor(r)-0.2688532")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_Technology$Profit, SampleSuperstore_Technology$Discount)
+
+## scatterplots to determine the relationship between Profit, Sales Revenue and Discount from Technology sales
+Technology_sales <- ggplot(data=SampleSuperstore_Technology) + geom_point(mapping=aes(x = Discount, y = Sales, size = Sales, color = Sales )) +
+  theme_classic() + labs(title= "Technology Sales: Sales vs Discount", subtitle = "How discount affect sales") +
+  annotate("text", x=0.6, y=20000, label = "Pearson cor(r)0.04147965")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_Technology$Sales, SampleSuperstore_Technology$Discount)
+
+Technology_quantity <- ggplot(data=SampleSuperstore_Technology) + geom_point(mapping=aes(x = Discount, y = Quantity, size = Quantity, color = Quantity )) +
+  theme_classic() + labs(title= "Technology Sales: Quantity vs Discount", subtitle = "How discount affect quatity sold") +
+  annotate("text", x=0.6, y=14, label = "Pearson cor(r)-0.01413123")
+
+# Pearson correlation between 2 variables
+cor(SampleSuperstore_Technology$Quantity, SampleSuperstore_Technology$Discount)
+
+```
+
+**Relationship between quantity purchased and discount per category**
+
+```{r, fig.width=18}
+furniture_quantity + OfficeSupplies_quantity + Technology_quantity
+
+```
+
+
+**Relationship between sales revenue and discount per category**
+
+```{r, fig.width=18}
+furniture_sales + OfficeSupplies_sales + Technology_sales
+```
+
+**Relationship between profits and discount per category**
+
+```{r, fig.width=18}
+furniture_profit + OfficeSupplies_profit + Technology_profit
+```
+
+1. Furniture profits, sales and quantity all have a negative correlation with discount.
+
+2. Office Supplies quantity had a positive correlation with discount but the other profit and sales had a negative correlation
+
+3. With Technology profit and quantity had a negative correlation with discount except sales. The positive relationship with sales was due to the big outlier at 50% discount.
+
+The analysis so far has proved that furniture sales exhibits a downward trend with discount in all aspects and it is clearly a weak area. Discounts given on furniture must not be more than 20%
+Office Supplies satisfies the aim of discounts as it significantly increases the demand for it. Negative profits for extreme discounts rate is  expected since it decrease sales revenue per unit sold by a significant margin.
+
+Further analysis will be taken on specific sub-categories that don't respond well to discounts and relevant suggestion will be made.
+
+
+
+
+```{r include=FALSE}
+# changing sub-Category column name to be able to work with it
+colnames(df)[9] <- "Sub_Category"
+
+df_grp_sub_category_total = df %>% group_by(Category, Sub_Category) %>% 
+  summarise(total_sales = sum(Sales), total_profit = sum(Profit),
+            total_quantity = sum(Quantity), total_discount = sum(Discount),.groups = "drop")
+
+# Ordering total profit in descending order 
+df_grp_sub_category_total_profit <- df_grp_sub_category_total %>% arrange(desc(total_profit))
+
+view(df_grp_sub_category_total_profit)                                                              
+                                                              
+# Grouping by Sub-Category and summarizing averages for each sub-category                          
+df_grp_sub_category_average = df %>% group_by(Category, Sub_Category) %>% 
+  summarise(average_sales = mean(Sales), average_profit = mean(Profit),
+average_quantity = mean(Quantity), average_discount = mean(Discount,.groups = "drop"))
+
+# Ordering average discount in descending order
+df_grp_sub_category_average_discount <- df_grp_sub_category_average %>% arrange(desc(average_discount))
+
+view(df_grp_sub_category_average_discount)
+
+# Ordering total quantity in descending order
+df_grp_sub_category_total_quantity <- df_grp_sub_category_total %>% arrange(desc(total_quantity))
+
+view(df_grp_sub_category_total_quantity)
+```
+
+```{r, include=FALSE}
+# Barchart showing the average discount per sub category in descending order 
+Sub_category_average_discount <- ggplot(df_grp_sub_category_average_discount, aes(x=reorder(Sub_Category,average_discount), y=average_discount, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Average Discount per Sub-Category", subtitle = "Average discount given on each transaction per category") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+# Barchart showing the average discount per sub category in descending order
+sub_category_total_quantity <- ggplot(df_grp_sub_category_total_quantity, aes(x=reorder(Sub_Category,total_quantity), y=total_quantity, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Total Quantity per Sub-Category", subtitle = "total amount of purchases per sub-category") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+# Barchart showing the average discount per sub category in descending order
+sub_category_total_profit <- ggplot(df_grp_sub_category_total_quantity, aes(x=reorder(Sub_Category,total_profit), y=total_profit, fill=Category)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Total Profit per Sub-Category", subtitle = "Sum of all profits made per sub-category") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+```
+
+### Barcharts comparing  average discount, total profits and quantity per sub category in descending order
+
+```{r, fig.width=18}
+Sub_category_average_discount + sub_category_total_quantity + sub_category_total_profit
+```
+
+1. Furniture had 3 out of the top 5 sub-categories with the highest average discount but 1 in the top 5 for quantity and zero for profits. Tables and bookcases are part of the most discounted categories but part of the least demanded products and also had the greatest losses. Furnishings however responded positively to discounts.
+
+2. Office Supplies dominates the top 5 in quantity demanded. Binders has had the most success with the discounts as it ranks top five in all three sections.
+
+3. Technology generally is the most profitable category but discounts given to machines must be reconsidered as it ranks very low in quantity demanded and profits despite high rates of discounts given.
+
+
+
+
+
+```{r include=FALSE}
+df_grp_city_total = df %>% group_by(City) %>% 
+  summarise(total_sales = sum(Sales), total_profit = sum(Profit),
+            total_quantity = sum(Quantity), total_discount = sum(Discount),.groups = "drop")
+
+
+view(df_grp_city_total)
+
+df_grp_city_average = df %>% group_by(City) %>% 
+  summarise(average_sales = mean(Sales), average_profit = mean(Profit),
+            average_quantity = mean(Quantity), average_discount = mean(Discount),.groups = "drop")
+
+view(df_grp_city_average)
+
+# Ordering average discount in descending order
+df_grp_city_average_discount <- df_grp_city_average %>% arrange(desc(average_discount))
+
+# Filtering for for top 10 cities
+df_grp_city_average_discount_top <- head(df_grp_city_average_discount, 10)
+
+# Filtering for for last 10 cities
+df_grp_city_average_discount_last <- tail(df_grp_city_average_discount, 10)
+
+# Ordering total quantity in descending order
+df_grp_city_total_quantity <- df_grp_city_total %>% arrange(desc(total_quantity))
+
+# Filtering for for top 10 cities
+df_grp_city_total_quantity_top <- head(df_grp_city_total_quantity, 10)
+
+# Filtering for for last 10 cities
+df_grp_city_total_quantity_last <- tail(df_grp_city_total_quantity, 10)
+
+# Ordering total profit in descending order
+df_grp_city_total_profit <- df_grp_city_total %>% arrange(desc(total_profit))
+
+# Filtering for for top 10 cities
+df_grp_city_total_profit_top <- head(df_grp_city_total_profit, 10)
+
+# Filtering for for last 10 cities
+df_grp_city_total_profit_last <- tail(df_grp_city_total_profit, 10)
+
+```
+
+
+```{r include=FALSE}
+# Barchart showing the average discount per city in descending order 
+average_discount_city_top <- ggplot(df_grp_city_average_discount_top, aes(x=reorder(City,average_discount), y=average_discount, fill=City)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Average Discount per City (Top 10)", subtitle = "Top 10 cities that had the highest discount on average") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+# Barchart showing the total quantity per city in descending order
+total_quantity_city_top <- ggplot(df_grp_city_total_quantity_top, aes(x=reorder(City,total_quantity), y=total_quantity, fill=City)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Total Quantity per City (Top 10)", subtitle = "Top 10 cities that had the highest quantities sold") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+# Barchart showing the total profit per sub category in descending order
+total_profit_city_top <- ggplot(df_grp_city_total_profit_top, aes(x=reorder(City,total_profit), y=total_profit, fill=City)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Total Profit per City (Top 10)", subtitle = "Top 10 cities that had the highest profits on sales") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+```
+
+
+
+### Bar charts comparing  average discount, total profits and quantity per City in descending order
+
+```{r, fig.width=18}
+average_discount_city_top + total_quantity_city_top + total_profit_city_top
+```
+
+
+```{r include=FALSE}
+# Barchart showing the average discount per city in descending order 
+average_discount_city_last <- ggplot(df_grp_city_average_discount_last, aes(x=reorder(City,average_discount), y=average_discount, fill=City)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Average Discount per City (Last 10)", subtitle = "Top 10 cities that had the lowest discount on average") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+# Barchart showing the quantities purchased per city in descending order
+total_quantity_city_last <- ggplot(df_grp_city_total_quantity_last, aes(x=reorder(City,total_quantity), y=total_quantity, fill=City)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Total Quantity per City (Last 10)", subtitle = "Top 10 cities that had the lowest quantities sold") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+# Barchart showing the total profit per city in descending order
+total_profit_city_last <- ggplot(df_grp_city_total_profit_last, aes(x=reorder(City,total_profit), y=total_profit, fill=City)) + 
+  geom_bar(stat="identity", width = 0.5, color="black") + scale_fill_discrete(palette("Dark2")) +
+  labs(title = "Total Profit per City (Last 10)", subtitle = "Top 10 cities that had the lowest profits on sales") + 
+  theme_classic() + theme(axis.text.x = element_blank()) + coord_flip()
+
+```
+
+
+### Bar charts comparing  average discount, total profits and quantity per City in descending order **
+
+```{r,fig.width=18}
+average_discount_city_last + total_quantity_city_last + total_profit_city_last
+```
+
+
+1. None of the top 10 cities that had the most demand and profit shows up in the highest and lowest discounted cities.
+
+2. Discount programs for Littleton and Elyria must be reconsidered as it ranks among the cities with the lowest quantities purchased.
+
+
+
+## Solutions
+
+1. Discounts given on furniture products must be reduced in order to make it more profitable. Furniture's generally are needed in specific quantities and it is also durable making it less attractive for customers to buy more of it even if high discounts are offered.
+
+2. Higher discounts rate can be explored for furnishings. Even though it is in the furniture category it responds very well to high discounts.
+
+3. Although on average Office Supplies is second in the the most discounted category due to binders, most of its products are in the lower tier of discounts rates given. Higher discount programs must be explored for office supplies since it's product type responds well to higher discounts.
+
+4. On average Techonology sales is flourishing and there should not be much change. However discounts given on machines must be reduced as it ranks among the lowest quantities purchased and least profitable products despite being the second highest discounted product.
+
+5. Discount programs for Littleton City and Elyria City must be reduced because it is failing to drive demand in the city.
+
